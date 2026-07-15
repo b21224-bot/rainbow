@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>레인보우 홀덤 - 그랜드 에디션</title>
+    <style>
+        :root {
+            --felt-color: #0b3c37;
+            --gold-light: #d4af37;
+            --gold-dark: #aa8420;
+            --black-text: #111111;
+            --red-suit: #d12229;
+            --felt-dark: #071715;
+            --dashboard-bg: rgba(5, 15, 13, 0.95);
+        }
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            background-color: #000;
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 🎬 1. 인트로 애니메이션 화면 */
+        #intro-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 1s ease-out, visibility 1s;
+        }
+        #intro-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        .intro-logo {
+            font-family: 'Georgia', serif;
+            font-size: 5rem;
+            color: var(--gold-light);
+            letter-spacing: 10px;
+            text-shadow: 0 0 30px rgba(212,175,55,0.8), 2px 2px 5px rgba(0,0,0,1);
+            margin-bottom: 30px;
+            animation: logo-glow 2s ease-in-out infinite alternate;
+            text-align: center;
+        }
+        .intro-rules {
+            background: rgba(255,255,255,0.05);
+            border-top: 2px solid var(--gold-dark);
+            border-bottom: 2px solid var(--gold-dark);
+            padding: 20px 40px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            line-height: 1.8;
+            font-size: 1.1rem;
+            color: #ccc;
+            box-sizing: border-box;
+            margin: 0 20px;
+        }
+        .intro-rules b { color: #fff; font-weight: bold; }
+        @keyframes logo-glow {
+            from { text-shadow: 0 0 20px rgba(212,175,55,0.5); }
+            to { text-shadow: 0 0 40px rgba(212,175,55,1); }
+        }
+
+        /* ♠ 2. 게임 테이블 디자인 */
+        .game-table {
+            width: 95vw;
+            max-width: 1400px;
+            height: 90vh;
+            max-height: 850px;
+            background: radial-gradient(circle, #12544c 0%, #082622 100%);
+            border: 16px solid #2b1810;
+            border-radius: 50% / 40px 40px 300px 300px;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.8), 0 20px 50px rgba(0,0,0,0.9);
+            position: relative;
+            padding: 30px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            animation: table-appear 1s ease-out 3s forwards; 
+            opacity: 0;
+        }
+        @keyframes table-appear {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .table-line {
+            position: absolute;
+            top: 8%; left: 4%; right: 4%; bottom: 12%;
+            border: 3px double var(--gold-light);
+            border-radius: 50% / 40px 40px 300px 300px;
+            pointer-events: none;
+            opacity: 0.25;
+        }
+        .table-logo {
+            text-align: center;
+            font-family: 'Georgia', serif;
+            color: var(--gold-light);
+            font-size: 2.2rem;
+            letter-spacing: 4px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin-top: 5px;
+            z-index: 5;
+        }
+        .table-logo span {
+            display: block;
+            font-size: 0.85rem;
+            color: #fff;
+            opacity: 0.7;
+            letter-spacing: 2px;
+            margin-top: 5px;
+        }
+
+        /* 🃏 3. 카드 및 플레이어 레이아웃 */
+        .dealer-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+            z-index: 10;
+        }
+        
+        .card-slot {
+            perspective: 1000px;
+            width: 85px;
+            height: 125px;
+        }
+        .card-flip {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+        }
+        .card-slot.revealed .card-flip {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+
+        /* ⭐️ 변경: 회색~검정색 톤의 럭셔리 패턴 카드 뒷면 */
+        .card-back {
+            background-color: #1a1a1a;
+            background-image: url('image_d14bfd.jpg'), 
+                radial-gradient(rgba(255,255,255,0.08) 9px, transparent 10px),
+                radial-gradient(rgba(255,255,255,0.08) 9px, transparent 10px),
+                linear-gradient(45deg, rgba(212,175,55,0.15) 25%, transparent 25%, transparent 75%, rgba(212,175,55,0.15) 75%, rgba(212,175,55,0.15)),
+                linear-gradient(45deg, rgba(212,175,55,0.15) 25%, transparent 25%, transparent 75%, rgba(212,175,55,0.15) 75%, rgba(212,175,55,0.15));
+            background-size: cover, 16px 16px, 16px 16px, 16px 16px, 16px 16px;
+            background-position: center, 0 0, 8px 8px, 0 0, 8px 8px;
+            border: 3px solid #ffffff;
+        }
+
+        .card-front {
+            background: #ffffff;
+            color: var(--black-text);
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 8px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            border: 1px solid #ccc;
+        }
+        .card-front.red { color: var(--red-suit); }
+        .card-front .suit-center {
+            font-size: 2.2rem;
+            align-self: center;
+        }
+
+        .card-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .players-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            width: 100%;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        .player-station {
+            background: rgba(0,0,0,0.4);
+            border: 2px solid rgba(212, 175, 55, 0.2);
+            border-radius: 15px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        .player-station.active {
+            border-color: var(--gold-light);
+            box-shadow: 0 0 15px rgba(212,175,55,0.5);
+            background: rgba(18, 84, 76, 0.3);
+        }
+        .player-station.me {
+            background: rgba(212, 175, 55, 0.05);
+            border: 2px dashed var(--gold-light);
+        }
+        .player-station.me.active {
+            box-shadow: 0 0 20px rgba(212,175,55,0.7);
+            background: rgba(212, 175, 55, 0.12);
+        }
+        .player-name {
+            font-weight: bold;
+            color: var(--gold-light);
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        /* 토큰 칩 디자인 */
+        .chip-bank {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .game-chip {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 1px 1px 2px #000;
+            border: 3px dashed #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4), inset 0 0 4px rgba(0,0,0,0.6);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+        }
+        .game-chip:hover:not(.disabled) { transform: translateY(-5px); }
+        .game-chip.disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .chip-1k { background: #e0b034; color: #000; border-color: #000; }
+        .chip-5k { background: #1b6ca8; }
+        .chip-10k { background: #c62828; }
+        .chip-50k { background: #ef6c00; }
+
+        /* 💰 4. 하단 컨트롤 대시보드 */
+        .bottom-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1.2fr;
+            gap: 20px;
+            background: var(--dashboard-bg);
+            border: 2px solid var(--gold-dark);
+            border-radius: 12px;
+            padding: 15px;
+            margin-top: 10px;
+            z-index: 10;
+        }
+        .panel-box h3 {
+            margin: 0 0 8px 0;
+            color: var(--gold-light);
+            font-size: 0.95rem;
+            border-bottom: 1px solid #22443f;
+            padding-bottom: 5px;
+        }
+        .win-rate-hero {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #5af78e;
+            text-shadow: 0 0 10px rgba(90,247,142,0.3);
+        }
+        .btn {
+            background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold-dark) 100%);
+            color: #000;
+            border: none;
+            padding: 10px 15px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+        .btn:hover:not(:disabled) { filter: brightness(1.2); }
+        .btn:disabled { background: #444; color: #888; cursor: not-allowed; box-shadow: none; }
+        
+        .btn-bet-complete { background: linear-gradient(135deg, #5af78e 0%, #308c50 100%); color: #fff; }
+        .btn-next-round { background: linear-gradient(135deg, #1b6ca8 0%, #004d80 100%); color:#fff; }
+
+        .log-screen {
+            background: #020807;
+            border: 1px solid #1a332f;
+            border-radius: 4px;
+            height: 80px;
+            overflow-y: auto;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #8be9fd;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<!-- 인트로 스크린 -->
+<div id="intro-screen">
+    <div class="intro-logo">RAINBOW HOLDEM</div>
+    <div class="intro-rules">
+        <p>♠ 7장의 카드 숫자 합이 <b>가장 적은</b> 플레이어가 승리합니다.</p>
+        <p>♥ 중복된 숫자의 카드는 합산에서 제외(0점 처리)됩니다.</p>
+        <p>♣ 7장의 숫자가 모두 다르면 <b>레인보우</b>로 무조건 승리합니다!</p>
+        <p style="color: var(--gold-light);">...잠시 후 게임 테이블로 입장합니다.</p>
+    </div>
+</div>
+
+<!-- 메인 게임판 -->
+<div class="game-table">
+    <div class="table-line"></div>
+    
+    <div class="table-logo">
+        RAINBOW HOLDEM
+        <span>MAX 4 PLAYERS / MINIMUM SUM WINS</span>
+    </div>
+
+    <!-- 딜러 구역 (공동 카드 4장) -->
+    <div class="dealer-area">
+        <div style="color: var(--gold-light); font-weight: bold; margin-bottom: 5px;" id="round-title">COMMUNITY CARDS</div>
+        <div class="card-container" id="dealer-cards">
+            <div class="card-slot" id="comm-0"><div class="card-flip"><div class="card-back"></div><div class="card-front"></div></div></div>
+            <div class="card-slot" id="comm-1"><div class="card-flip"><div class="card-back"></div><div class="card-front"></div></div></div>
+            <div class="card-slot" id="comm-2"><div class="card-flip"><div class="card-back"></div><div class="card-front"></div></div></div>
+            <div class="card-slot" id="comm-3"><div class="card-flip"><div class="card-back"></div><div class="card-front"></div></div></div>
+        </div>
+    </div>
+
+    <!-- 플레이어 배치 레이아웃 -->
+    <div class="players-container" id="players-layout"></div>
+
+    <!-- 하단 대시보드 조작계 -->
+    <div class="bottom-dashboard">
+        <!-- 1. 베팅 조작부 -->
+        <div class="panel-box">
+            <h3>💰 BETTING CONTROL</h3>
+            <div style="font-size: 0.9rem; margin-bottom: 5px; line-height: 1.4;">
+                현재 총 판돈 (POT): <span style="color: #5af78e; font-weight: bold;" id="pot-display">0원</span><br>
+                내 이번 라운드 베팅: <span style="color: var(--gold-light); font-weight: bold;" id="my-bet-display">0원</span>
+            </div>
+            <div class="chip-bank" id="betting-chips-bank">
+                <div class="game-chip chip-1k" data-amount="1000">1K</div>
+                <div class="game-chip chip-5k" data-amount="5000">5K</div>
+                <div class="game-chip chip-10k" data-amount="10000">10K</div>
+                <div class="game-chip chip-50k" data-amount="50000">50K</div>
+            </div>
+            <div style="font-size: 0.7rem; color: #aaa; margin-top: 5px;">* 칩을 클릭하여 베팅액을 늘려가세요.</div>
+        </div>
+
+        <!-- 2. 게임 액션 버튼 -->
+        <div class="panel-box" style="display: flex; flex-direction: column; justify-content: center; gap: 5px;">
+            <button class="btn" id="deal-btn" onclick="startGame()">DEAL (게임 시작)</button>
+            <button class="btn btn-bet-complete" id="bet-complete-btn" onclick="completeBetting()" disabled>베팅 완료 (Bet)</button>
+            <button class="btn btn-next-round" id="next-btn" onclick="nextRound()" disabled>다음 라운드 (Next)</button>
+        </div>
+
+        <!-- 3. 실시간 AI 승률 분석 및 로그 -->
+        <div class="panel-box">
+            <h3>📊 AI & LIVE LOG</h3>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 10px;">
+                <div style="flex-shrink: 0;">
+                    <div style="font-size: 0.8rem; color: #aaa;">내 예상 승률</div>
+                    <div class="win-rate-hero" id="ai-winrate">0.00%</div>
+                </div>
+                <div class="log-screen" id="log-box" style="flex-grow: 1;">테이블에 입장하셨습니다.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let deck = [];
+    let communityCards = [];
+    let players = [];
+    let currentRound = 0;
+    let openDealerCount = 1;
+    let potMoney = 0;
+    let myCurrentBet = 0;
+    let isBettingPhase = false;
+
+    const suits = ['♠', '♥', '♦', '♣'];
+
+    window.addEventListener('load', function() {
+        initEmptyTable();
+        setTimeout(function() {
+            const intro = document.getElementById('intro-screen');
+            if (intro) {
+                intro.classList.add('hidden');
+            }
+            document.getElementById('deal-btn').click(); 
+        }, 3000);
+    });
+
+    function buildDeck() {
+        let temp = [];
+        for(let num=1; num<=10; num++) {
+            for(let c=0; c<num; c++) {
+                let suit = suits[Math.floor(Math.random()*suits.length)];
+                temp.push({ number: num, suit: suit });
+            }
+        }
+        return temp;
+    }
+
+    function evaluateHand(comm, priv) {
+        let all = [...comm, ...priv].map(c => c.number);
+        let unique = new Set(all);
+        let isRainbow = (all.length === 7 && unique.size === 7);
+
+        let counts = {};
+        all.forEach(n => counts[n] = (counts[n]||0)+1);
+        
+        let sum = 0;
+        all.forEach(n => { if(counts[n] === 1) sum += n; });
+        return { isRainbow, score: sum };
+    }
+
+    function startGame() {
+        deck = buildDeck().sort(() => Math.random() - 0.5);
+        communityCards = [deck.pop(), deck.pop(), deck.pop(), deck.pop()];
+        players = [];
+        currentRound = 0;
+        openDealerCount = 1;
+        potMoney = 40000;
+        myCurrentBet = 0;
+
+        for(let i=0; i<4; i++) {
+            players.push({
+                id: i,
+                name: i === 0 ? "나 (ME)" : `PLAYER ${i}`,
+                cards: [deck.pop(), deck.pop(), deck.pop()],
+                chips: 500000,
+                currentRoundBet: 0
+            });
+            players[i].chips -= 10000;
+        }
+
+        let minVal = 99; 
+        let leader = 0;
+        players.forEach((p, idx) => {
+            if(p.cards[0].number < minVal) { 
+                minVal = p.cards[0].number; 
+                leader = idx; 
+            }
+        });
+
+        document.getElementById('deal-btn').disabled = true;
+        setBettingPhase(true); 
+        
+        document.getElementById('log-box').innerHTML = '';
+        printLog("🎰 딜러가 카드를 셔플하고 분배합니다. (기본 안티 10,000원 완료)");
+        printLog(`📢 오픈카드 [${minVal}]가 가장 낮은 ${players[leader].name}님이 '선'입니다.`);
+
+        renderTable();
+        triggerFlips();
+        updateChipsBank();
+        runSimulation();
+    }
+
+    document.getElementById('betting-chips-bank').addEventListener('click', function(e) {
+        if(!isBettingPhase) return;
+        
+        const chip = e.target.closest('.game-chip');
+        if(!chip || chip.classList.contains('disabled')) return;
+        
+        const amount = parseInt(chip.dataset.amount);
+        
+        if(players[0].chips >= amount) {
+            players[0].chips -= amount;
+            myCurrentBet += amount;
+            potMoney += amount;
+            updateBetDisplay();
+        } else {
+            printLog("❌ 보유한 칩 잔액이 부족합니다.");
+        }
+    });
+
+    function completeBetting() {
+        if(!isBettingPhase) return;
+
+        printLog(`💰 베팅을 확정했습니다. 내 레이스액: ${myCurrentBet.toLocaleString()}원.`);
+        
+        for(let i=1; i<4; i++) {
+            players[i].chips -= myCurrentBet;
+            potMoney += myCurrentBet;
+        }
+        
+        setBettingPhase(false);
+        renderTable();
+        triggerFlips();
+    }
+
+    function nextRound() {
+        currentRound++;
+        myCurrentBet = 0;
+        updateBetDisplay();
+
+        if(currentRound < 3) {
+            openDealerCount = currentRound + 1;
+            printLog(`⏭️ 딜러의 공동 카드가 ${openDealerCount}장까지 확장 오픈되었습니다. 베팅하세요.`);
+            
+            setBettingPhase(true); 
+            renderTable();
+            triggerFlips();
+            updateChipsBank();
+            runSimulation();
+        } else {
+            document.getElementById('next-btn').disabled = true;
+            document.getElementById('deal-btn').disabled = false;
+            printLog("🏁 쇼다운! 히든카드가 일제히 공개됩니다.");
+            revealFinal();
+        }
+    }
+
+    function setBettingPhase(isBetting) {
+        isBettingPhase = isBetting;
+        document.getElementById('bet-complete-btn').disabled = !isBetting;
+        document.getElementById('next-btn').disabled = isBetting;
+        updateChipsBank();
+
+        players.forEach((p, idx) => {
+            const station = document.querySelectorAll('.player-station')[idx];
+            if(station) {
+                if(isBetting && idx === 0) {
+                    station.classList.add('active');
+                } else {
+                    station.classList.remove('active');
+                }
+            }
+        });
+    }
+
+    function updateBetDisplay() {
+        document.getElementById('pot-display').innerText = potMoney.toLocaleString() + '원';
+        document.getElementById('my-bet-display').innerText = myCurrentBet.toLocaleString() + '원';
+        
+        const myChipsEl = document.querySelector('.player-station.me .player-balance');
+        if(myChipsEl && players[0]) {
+            myChipsEl.innerText = players[0].chips.toLocaleString() + '원';
+        }
+    }
+
+    function updateChipsBank() {
+        const chips = document.querySelectorAll('#betting-chips-bank .game-chip');
+        chips.forEach(chip => {
+            const amount = parseInt(chip.dataset.amount);
+            if(!isBettingPhase || (players[0] && players[0].chips < amount)) {
+                chip.classList.add('disabled');
+            } else {
+                chip.classList.remove('disabled');
+            }
+        });
+    }
+
+    function triggerFlips() {
+        for(let i=0; i<4; i++) {
+            let el = document.getElementById(`comm-${i}`);
+            if(el) {
+                if(i < openDealerCount) el.classList.add('revealed');
+                else el.classList.remove('revealed');
+            }
+        }
+        players.forEach((p, idx) => {
+            const card0 = document.getElementById(`p-card-${idx}-0`);
+            if(card0) card0.classList.add('revealed');
+            
+            if(idx === 0) {
+                const card1 = document.getElementById(`p-card-${idx}-1`);
+                const card2 = document.getElementById(`p-card-${idx}-2`);
+                if(card1) card1.classList.add('revealed');
+                if(card2) card2.classList.add('revealed');
+            }
+        });
+    }
+
+    function revealFinal() {
+        renderTable(true);
+        updateBetDisplay();
+        
+        for(let i=0; i<4; i++) {
+            const el = document.getElementById(`comm-${i}`);
+            if(el) el.classList.add('revealed');
+        }
+        players.forEach((p, idx) => {
+            for(let c=0; c<3; c++) {
+                const cardEl = document.getElementById(`p-card-${idx}-${c}`);
+                if(cardEl) cardEl.classList.add('revealed');
+            }
+        });
+
+        let finalResults = players.map(p => {
+            let res = evaluateHand(communityCards, p.cards);
+            return { name: p.name, ...res };
+        });
+
+        let winIdx = 0; 
+        let bestScore = 999; 
+        let bestRainbow = false;
+
+        finalResults.forEach((res, idx) => {
+            if(res.isRainbow) {
+                if(!bestRainbow || res.score < bestScore) { 
+                    bestRainbow = true; 
+                    bestScore = res.score; 
+                    winIdx = idx; 
+                }
+            } else if(!bestRainbow) {
+                if(res.score < bestScore) { 
+                    bestScore = res.score; 
+                    winIdx = idx; 
+                }
+            }
+        });
+
+        printLog(`🏆 최종 결과 발표!!`);
+        finalResults.forEach(r => {
+            printLog(`• ${r.name}: 중복제거 합계 [${r.score}점] ${r.isRainbow?'(🌈레인보우)':''}`);
+        });
+        
+        printLog(`👑 승리자: [ ${finalResults[winIdx].name} ]`);
+
+        if(winIdx === 0) {
+            document.getElementById('ai-winrate').innerText = "100%";
+            players[0].chips += potMoney;
+            printLog(`🎉 축하합니다! 상금 ${potMoney.toLocaleString()}원을 획득했습니다.`);
+        } else {
+            document.getElementById('ai-winrate').innerText = "0%";
+            players[winIdx].chips += potMoney;
+            printLog(`😭 아쉽지만 승리를 넘겨주었습니다.`);
+        }
+        potMoney = 0;
+        updateBetDisplay();
+    }
+
+    // 몬테카를로 분석
+    function runSimulation() {
+        if(currentRound === 3) return;
+        let simCount = 1000; 
+        let wins = 0;
+
+        let visible = [...players[0].cards];
+        for(let i=1; i<4; i++) visible.push(players[i].cards[0]);
+        for(let i=0; i<openDealerCount; i++) visible.push(communityCards[i]);
+
+        let visibleNums = visible.map(c => c.number);
+
+        for(let s=0; s<simCount; s++) {
+            let simDeck = [];
+            for(let n=1; n<=10; n++) {
+                for(let c=0; c<n; c++) simDeck.push({number:n});
+            }
+            visibleNums.forEach(num => {
+                let idx = simDeck.findIndex(c => c.number === num);
+                if(idx !== -1) simDeck.splice(idx,1);
+            });
+            simDeck.sort(() => Math.random()-0.5);
+
+            let simComm = [...communityCards.slice(0, openDealerCount)];
+            while(simComm.length < 4) simComm.push(simDeck.pop());
+
+            let simPlayers = [{ id: 0, res: evaluateHand(simComm, players[0].cards) }];
+
+            for(let i=1; i<4; i++) {
+                let pCards = [players[i].cards[0], simDeck.pop(), simDeck.pop()];
+                simPlayers.push({ id: i, res: evaluateHand(simComm, pCards) });
+            }
+
+            let wIdx = -1; 
+            let bScore = 999; 
+            let bRain = false;
+            simPlayers.forEach((p, idx) => {
+                if(p.res.isRainbow) {
+                    if(!bRain || p.res.score < bScore) { 
+                        bRain=true; 
+                        bScore=p.res.score; 
+                        wIdx=idx; 
+                    }
+                } else if(!bRain) {
+                    if(p.res.score < bScore) { 
+                        bScore=p.res.score; 
+                        wIdx=idx; 
+                    }
+                }
+            });
+            if(wIdx === 0) wins++;
+        }
+
+        document.getElementById('ai-winrate').innerText = ((wins/simCount)*100).toFixed(2) + '%';
+    }
+
+    function renderTable(revealAll = false) {
+        updateBetDisplay();
+        
+        communityCards.forEach((card, i) => {
+            let isRed = ['♥','♦'].includes(card.suit);
+            let slot = document.querySelector(`#comm-${i} .card-front`);
+            if (slot) {
+                slot.className = `card-front ${isRed?'red':''}`;
+                slot.innerHTML = `<div>${card.suit}${card.number}</div><div class="suit-center">${card.suit}</div><div style="transform:rotate(180deg)">${card.suit}${card.number}</div>`;
+            }
+        });
+
+        let layout = document.getElementById('players-layout');
+        layout.innerHTML = '';
+
+        players.forEach((p, idx) => {
+            let isMe = idx === 0;
+            let cardsHtml = '';
+            
+            p.cards.forEach((card, cIdx) => {
+                let isRed = ['♥','♦'].includes(card.suit);
+                let showCard = isMe || revealAll || (cIdx === 0);
+                let revealedClass = showCard ? 'revealed' : '';
+
+                cardsHtml += `
+                    <div class="card-slot ${revealedClass}" id="p-card-${idx}-${cIdx}">
+                        <div class="card-flip">
+                            <div class="card-back"></div>
+                            <div class="card-front ${isRed?'red':''}">
+                                <div>${card.suit}${card.number}</div>
+                                <div class="suit-center">${card.suit}</div>
+                                <div style="transform:rotate(180deg)">${card.suit}${card.number}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            layout.innerHTML += `
+                <div class="player-station ${isMe?'me':''}">
+                    <div class="player-name">${p.name}</div>
+                    <div class="card-container">${cardsHtml}</div>
+                    <div class="chip-bank" style="margin-top: 15px; font-size: 0.8rem; color: #aaa;">
+                        <span class="player-balance">${p.chips.toLocaleString()}원</span> 보유
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function printLog(msg) {
+        let box = document.getElementById('log-box');
+        if (box) {
+            box.innerHTML += `> ${msg}\n`;
+            box.scrollTop = box.scrollHeight;
+        }
+    }
+
+    function initEmptyTable() {
+        let layout = document.getElementById('players-layout');
+        layout.innerHTML = '';
+        for(let i=0; i<4; i++) {
+            layout.innerHTML += `
+                <div class="player-station ${i===0?'me':''}">
+                    <div class="player-name">${i===0?'나 (ME)':'PLAYER '+i}</div>
+                    <div class="card-container">
+                        <div class="card-slot"><div class="card-back"></div></div>
+                        <div class="card-slot"><div class="card-back"></div></div>
+                        <div class="card-slot"><div class="card-back"></div></div>
+                    </div>
+                    <div class="chip-bank" style="margin-top: 15px; font-size: 0.8rem; color: #aaa;">
+                        <span class="player-balance">500,000원</span> 보유
+                    </div>
+                </div>
+            `;
+        }
+    }
+</script>
+
+</body>
+</html>
